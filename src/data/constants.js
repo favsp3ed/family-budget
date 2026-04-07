@@ -51,40 +51,117 @@ export const STATE_TAX_RATES = {
   Wyoming: 0,
 }
 
-export const FEDERAL_BRACKETS = {
-  single: [
-    { min: 0, max: 11600, rate: 0.10 },
-    { min: 11600, max: 47150, rate: 0.12 },
-    { min: 47150, max: 100525, rate: 0.22 },
-    { min: 100525, max: 191950, rate: 0.24 },
-    { min: 191950, max: 243725, rate: 0.32 },
-    { min: 243725, max: 609350, rate: 0.35 },
-    { min: 609350, max: Infinity, rate: 0.37 },
-  ],
-  married: [
-    { min: 0, max: 23200, rate: 0.10 },
-    { min: 23200, max: 94300, rate: 0.12 },
-    { min: 94300, max: 201050, rate: 0.22 },
-    { min: 201050, max: 383900, rate: 0.24 },
-    { min: 383900, max: 487450, rate: 0.32 },
-    { min: 487450, max: 731200, rate: 0.35 },
-    { min: 731200, max: Infinity, rate: 0.37 },
-  ],
-  hoh: [
-    { min: 0, max: 16550, rate: 0.10 },
-    { min: 16550, max: 63100, rate: 0.12 },
-    { min: 63100, max: 100500, rate: 0.22 },
-    { min: 100500, max: 191950, rate: 0.24 },
-    { min: 191950, max: 243700, rate: 0.32 },
-    { min: 243700, max: 609350, rate: 0.35 },
-    { min: 609350, max: Infinity, rate: 0.37 },
-  ],
+// All federal tax data keyed by tax year
+export const TAX_DATA = {
+  2023: {
+    ficaCap: 160200,
+    deductions: { single: 13850, married: 27700, hoh: 20800 },
+    brackets: {
+      single: [
+        { min: 0,       max: 11000,    rate: 0.10 },
+        { min: 11000,   max: 44725,    rate: 0.12 },
+        { min: 44725,   max: 95375,    rate: 0.22 },
+        { min: 95375,   max: 182050,   rate: 0.24 },
+        { min: 182050,  max: 231250,   rate: 0.32 },
+        { min: 231250,  max: 578125,   rate: 0.35 },
+        { min: 578125,  max: Infinity, rate: 0.37 },
+      ],
+      married: [
+        { min: 0,       max: 22000,    rate: 0.10 },
+        { min: 22000,   max: 89450,    rate: 0.12 },
+        { min: 89450,   max: 190750,   rate: 0.22 },
+        { min: 190750,  max: 364200,   rate: 0.24 },
+        { min: 364200,  max: 462500,   rate: 0.32 },
+        { min: 462500,  max: 693750,   rate: 0.35 },
+        { min: 693750,  max: Infinity, rate: 0.37 },
+      ],
+      hoh: [
+        { min: 0,       max: 15700,    rate: 0.10 },
+        { min: 15700,   max: 59850,    rate: 0.12 },
+        { min: 59850,   max: 95350,    rate: 0.22 },
+        { min: 95350,   max: 182050,   rate: 0.24 },
+        { min: 182050,  max: 231250,   rate: 0.32 },
+        { min: 231250,  max: 578100,   rate: 0.35 },
+        { min: 578100,  max: Infinity, rate: 0.37 },
+      ],
+    },
+  },
+  2024: {
+    ficaCap: 168600,
+    deductions: { single: 14600, married: 29200, hoh: 21900 },
+    brackets: {
+      single: [
+        { min: 0,       max: 11600,    rate: 0.10 },
+        { min: 11600,   max: 47150,    rate: 0.12 },
+        { min: 47150,   max: 100525,   rate: 0.22 },
+        { min: 100525,  max: 191950,   rate: 0.24 },
+        { min: 191950,  max: 243725,   rate: 0.32 },
+        { min: 243725,  max: 609350,   rate: 0.35 },
+        { min: 609350,  max: Infinity, rate: 0.37 },
+      ],
+      married: [
+        { min: 0,       max: 23200,    rate: 0.10 },
+        { min: 23200,   max: 94300,    rate: 0.12 },
+        { min: 94300,   max: 201050,   rate: 0.22 },
+        { min: 201050,  max: 383900,   rate: 0.24 },
+        { min: 383900,  max: 487450,   rate: 0.32 },
+        { min: 487450,  max: 731200,   rate: 0.35 },
+        { min: 731200,  max: Infinity, rate: 0.37 },
+      ],
+      hoh: [
+        { min: 0,       max: 16550,    rate: 0.10 },
+        { min: 16550,   max: 63100,    rate: 0.12 },
+        { min: 63100,   max: 100500,   rate: 0.22 },
+        { min: 100500,  max: 191950,   rate: 0.24 },
+        { min: 191950,  max: 243700,   rate: 0.32 },
+        { min: 243700,  max: 609350,   rate: 0.35 },
+        { min: 609350,  max: Infinity, rate: 0.37 },
+      ],
+    },
+  },
+  2025: {
+    ficaCap: 176100,
+    deductions: { single: 15000, married: 30000, hoh: 22500 },
+    brackets: {
+      single: [
+        { min: 0,       max: 11925,    rate: 0.10 },
+        { min: 11925,   max: 48475,    rate: 0.12 },
+        { min: 48475,   max: 103350,   rate: 0.22 },
+        { min: 103350,  max: 197300,   rate: 0.24 },
+        { min: 197300,  max: 250525,   rate: 0.32 },
+        { min: 250525,  max: 626350,   rate: 0.35 },
+        { min: 626350,  max: Infinity, rate: 0.37 },
+      ],
+      married: [
+        { min: 0,       max: 23850,    rate: 0.10 },
+        { min: 23850,   max: 96950,    rate: 0.12 },
+        { min: 96950,   max: 206700,   rate: 0.22 },
+        { min: 206700,  max: 394600,   rate: 0.24 },
+        { min: 394600,  max: 501050,   rate: 0.32 },
+        { min: 501050,  max: 751600,   rate: 0.35 },
+        { min: 751600,  max: Infinity, rate: 0.37 },
+      ],
+      hoh: [
+        { min: 0,       max: 17000,    rate: 0.10 },
+        { min: 17000,   max: 64850,    rate: 0.12 },
+        { min: 64850,   max: 103350,   rate: 0.22 },
+        { min: 103350,  max: 197300,   rate: 0.24 },
+        { min: 197300,  max: 250500,   rate: 0.32 },
+        { min: 250500,  max: 626350,   rate: 0.35 },
+        { min: 626350,  max: Infinity, rate: 0.37 },
+      ],
+    },
+  },
 }
 
-export const STANDARD_DEDUCTIONS = {
-  single: 14600,
-  married: 29200,
-  hoh: 21900,
+export const BRACKET_COLORS = {
+  0.10: '#4ade80',
+  0.12: '#a3e635',
+  0.22: '#fbbf24',
+  0.24: '#f97316',
+  0.32: '#f87171',
+  0.35: '#ef4444',
+  0.37: '#dc2626',
 }
 
 export const EXPENSE_CATEGORIES = [

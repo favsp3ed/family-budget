@@ -4,6 +4,7 @@ import SummaryDashboard from './components/SummaryDashboard'
 import IncomeSection from './components/IncomeSection'
 import TaxCalculator from './components/TaxCalculator'
 import ExpenseTracker from './components/ExpenseTracker'
+import InflationProjection from './components/InflationProjection'
 import SavingsGoals from './components/SavingsGoals'
 import { toMonthly, calcTaxes, calcCategoryTotal } from './utils/calculations'
 import { saveData, loadData } from './utils/storage'
@@ -27,6 +28,7 @@ const DEFAULT_STATE = {
   earners: [{ id: 1, name: '', gross: '', frequency: 'monthly' }],
   filingStatus: 'single',
   selectedState: 'Texas',
+  taxYear: 2025,
   expenses: buildDefaultExpenses(),
   goals: [],
 }
@@ -34,11 +36,7 @@ const DEFAULT_STATE = {
 function mergeExpenses(saved, defaults) {
   const merged = {}
   for (const cat of EXPENSE_CATEGORIES) {
-    if (saved[cat.id]) {
-      merged[cat.id] = saved[cat.id]
-    } else {
-      merged[cat.id] = defaults[cat.id]
-    }
+    merged[cat.id] = saved[cat.id] || defaults[cat.id]
   }
   return merged
 }
@@ -52,16 +50,13 @@ export default function App() {
       earners: saved.earners || DEFAULT_STATE.earners,
       filingStatus: saved.filingStatus || 'single',
       selectedState: saved.selectedState || 'Texas',
+      taxYear: saved.taxYear || 2025,
       expenses: saved.expenses ? mergeExpenses(saved.expenses, defaults) : defaults,
       goals: saved.goals || [],
     }
   })
 
-  const [lastSaved, setLastSaved] = useState(() => {
-    const saved = loadData()
-    return saved?.savedAt || null
-  })
-
+  const [lastSaved, setLastSaved] = useState(() => loadData()?.savedAt || null)
   const [saveIndicator, setSaveIndicator] = useState(false)
   const saveTimer = useRef(null)
 
@@ -78,40 +73,37 @@ export default function App() {
     return () => clearTimeout(saveTimer.current)
   }, [data])
 
-  const setEarners = useCallback(earners => setData(d => ({ ...d, earners })), [])
-  const setExpenses = useCallback(expenses => setData(d => ({ ...d, expenses })), [])
-  const setGoals = useCallback(goals => setData(d => ({ ...d, goals })), [])
-  const setTaxField = useCallback((field, value) => setData(d => ({ ...d, [field]: value })), [])
+  const setEarners   = useCallback(earners   => setData(d => ({ ...d, earners })),   [])
+  const setExpenses  = useCallback(expenses  => setData(d => ({ ...d, expenses })),  [])
+  const setGoals     = useCallback(goals     => setData(d => ({ ...d, goals })),      [])
+  const setTaxField  = useCallback((field, value) => setData(d => ({ ...d, [field]: value })), [])
 
-  const monthlyGross = data.earners.reduce((sum, e) => sum + toMonthly(e.gross, e.frequency), 0)
-  const annualGross = monthlyGross * 12
-  const taxes = calcTaxes(annualGross, data.filingStatus, data.selectedState)
+  const monthlyGross   = data.earners.reduce((sum, e) => sum + toMonthly(e.gross, e.frequency), 0)
+  const annualGross    = monthlyGross * 12
+  const taxes          = calcTaxes(annualGross, data.filingStatus, data.selectedState, data.taxYear)
   const monthlyExpenses = Object.values(data.expenses).reduce(
     (sum, items) => sum + calcCategoryTotal(items), 0
   )
 
   const handleExport = () => {
     const rows = [['Category', 'Item', 'Monthly Amount', 'Annual Amount', 'Notes']]
-
     for (const cat of EXPENSE_CATEGORIES) {
-      const items = data.expenses[cat.id] || []
-      for (const item of items) {
+      for (const item of (data.expenses[cat.id] || [])) {
         if (item.amount) {
           const m = parseFloat(item.amount) || 0
           rows.push([cat.label, item.name, m.toFixed(2), (m * 12).toFixed(2), item.notes || ''])
         }
       }
     }
-
     rows.push([])
     rows.push(['--- Income ---', '', '', '', ''])
     for (const e of data.earners) {
       const m = toMonthly(e.gross, e.frequency)
       rows.push(['Income', e.name || 'Earner', m.toFixed(2), (m * 12).toFixed(2), e.frequency])
     }
-
     rows.push([])
     rows.push(['--- Summary ---', '', '', '', ''])
+    rows.push(['', 'Tax Year', data.taxYear, '', ''])
     rows.push(['', 'Monthly Gross', monthlyGross.toFixed(2), '', ''])
     rows.push(['', 'Monthly Tax', taxes.monthlyTax.toFixed(2), '', ''])
     rows.push(['', 'Monthly Take-Home', taxes.monthlyTakeHome.toFixed(2), '', ''])
@@ -119,7 +111,7 @@ export default function App() {
     rows.push(['', 'Monthly Remaining', (taxes.monthlyTakeHome - monthlyExpenses).toFixed(2), '', ''])
     rows.push(['', 'Effective Tax Rate', taxes.effectiveRate.toFixed(2) + '%', '', ''])
 
-    const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -136,23 +128,29 @@ export default function App() {
         onExport={handleExport}
         selectedState={data.selectedState}
         filingStatus={data.filingStatus}
+        taxYear={data.taxYear}
         remaining={taxes.monthlyTakeHome - monthlyExpenses}
       />
 
       <main className="max-w-screen-xl mx-auto px-4 py-5">
-        {/* Save indicator toast */}
+        {/* Save toast */}
         <div
           className="fixed bottom-5 right-5 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-xl"
-          style={{ background: '#1a1d27', border: '1px solid #2a2d3a', color: '#e8e8e8', fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 11, letterSpacing: '0.04em' }}
           style={{
+            background: '#1a1d27',
+            border: '1px solid #2a2d3a',
+            color: '#e8e8e8',
+            fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+            fontSize: 11,
+            letterSpacing: '0.04em',
             opacity: saveIndicator ? 1 : 0,
             transform: saveIndicator ? 'translateY(0)' : 'translateY(8px)',
             transition: 'opacity 0.25s ease, transform 0.25s ease',
             pointerEvents: 'none',
           }}
         >
-          <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
           </svg>
           All changes saved
         </div>
@@ -170,11 +168,17 @@ export default function App() {
             filingStatus={data.filingStatus}
             selectedState={data.selectedState}
             annualGross={annualGross}
+            taxYear={data.taxYear}
             onChange={setTaxField}
           />
         </div>
 
         <ExpenseTracker expenses={data.expenses} onChange={setExpenses} />
+
+        <InflationProjection
+          expenses={data.expenses}
+          effectiveRate={taxes.effectiveRate}
+        />
 
         <SavingsGoals goals={data.goals} onChange={setGoals} />
       </main>

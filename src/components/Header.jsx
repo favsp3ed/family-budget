@@ -16,7 +16,7 @@ const T = {
   inputBg: '#12151e',
 }
 
-export default function Header({ lastSaved, onExport, selectedState, filingStatus, remaining }) {
+export default function Header({ lastSaved, onExport, selectedState, filingStatus, taxYear, remaining }) {
   const fmtTime = (d) => {
     if (!d) return '--:--'
     const date = typeof d === 'string' ? new Date(d) : d
@@ -44,7 +44,7 @@ export default function Header({ lastSaved, onExport, selectedState, filingStatu
             </span>
           </div>
           <p style={{ fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 10, color: T.muted, marginTop: 2, letterSpacing: '0.04em' }}>
-            {selectedState || 'Select State'} · {FILING_LABELS[filingStatus] || filingStatus} · 2024 TAX YEAR
+            {selectedState || 'Select State'} · {FILING_LABELS[filingStatus] || filingStatus} · {taxYear || 2025} TAX YEAR
           </p>
         </div>
 
