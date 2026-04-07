@@ -1,121 +1,183 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import Header from './components/Header'
+import SummaryDashboard from './components/SummaryDashboard'
+import IncomeSection from './components/IncomeSection'
+import TaxCalculator from './components/TaxCalculator'
+import ExpenseTracker from './components/ExpenseTracker'
+import SavingsGoals from './components/SavingsGoals'
+import { toMonthly, calcTaxes, calcCategoryTotal } from './utils/calculations'
+import { saveData, loadData } from './utils/storage'
+import { EXPENSE_CATEGORIES } from './data/constants'
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+function buildDefaultExpenses() {
+  const expenses = {}
+  let id = 1
+  for (const cat of EXPENSE_CATEGORIES) {
+    expenses[cat.id] = cat.items.map(item => ({
+      id: id++,
+      name: item.name,
+      amount: '',
+      notes: '',
+    }))
+  }
+  return expenses
 }
 
-export default App
+const DEFAULT_STATE = {
+  earners: [{ id: 1, name: '', gross: '', frequency: 'monthly' }],
+  filingStatus: 'single',
+  selectedState: 'Texas',
+  expenses: buildDefaultExpenses(),
+  goals: [],
+}
+
+function mergeExpenses(saved, defaults) {
+  const merged = {}
+  for (const cat of EXPENSE_CATEGORIES) {
+    if (saved[cat.id]) {
+      merged[cat.id] = saved[cat.id]
+    } else {
+      merged[cat.id] = defaults[cat.id]
+    }
+  }
+  return merged
+}
+
+export default function App() {
+  const [data, setData] = useState(() => {
+    const saved = loadData()
+    if (!saved) return DEFAULT_STATE
+    const defaults = buildDefaultExpenses()
+    return {
+      earners: saved.earners || DEFAULT_STATE.earners,
+      filingStatus: saved.filingStatus || 'single',
+      selectedState: saved.selectedState || 'Texas',
+      expenses: saved.expenses ? mergeExpenses(saved.expenses, defaults) : defaults,
+      goals: saved.goals || [],
+    }
+  })
+
+  const [lastSaved, setLastSaved] = useState(() => {
+    const saved = loadData()
+    return saved?.savedAt || null
+  })
+
+  const [saveIndicator, setSaveIndicator] = useState(false)
+  const saveTimer = useRef(null)
+
+  useEffect(() => {
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      const ts = saveData(data)
+      if (ts) {
+        setLastSaved(ts)
+        setSaveIndicator(true)
+        setTimeout(() => setSaveIndicator(false), 2000)
+      }
+    }, 300)
+    return () => clearTimeout(saveTimer.current)
+  }, [data])
+
+  const setEarners = useCallback(earners => setData(d => ({ ...d, earners })), [])
+  const setExpenses = useCallback(expenses => setData(d => ({ ...d, expenses })), [])
+  const setGoals = useCallback(goals => setData(d => ({ ...d, goals })), [])
+  const setTaxField = useCallback((field, value) => setData(d => ({ ...d, [field]: value })), [])
+
+  const monthlyGross = data.earners.reduce((sum, e) => sum + toMonthly(e.gross, e.frequency), 0)
+  const annualGross = monthlyGross * 12
+  const taxes = calcTaxes(annualGross, data.filingStatus, data.selectedState)
+  const monthlyExpenses = Object.values(data.expenses).reduce(
+    (sum, items) => sum + calcCategoryTotal(items), 0
+  )
+
+  const handleExport = () => {
+    const rows = [['Category', 'Item', 'Monthly Amount', 'Annual Amount', 'Notes']]
+
+    for (const cat of EXPENSE_CATEGORIES) {
+      const items = data.expenses[cat.id] || []
+      for (const item of items) {
+        if (item.amount) {
+          const m = parseFloat(item.amount) || 0
+          rows.push([cat.label, item.name, m.toFixed(2), (m * 12).toFixed(2), item.notes || ''])
+        }
+      }
+    }
+
+    rows.push([])
+    rows.push(['--- Income ---', '', '', '', ''])
+    for (const e of data.earners) {
+      const m = toMonthly(e.gross, e.frequency)
+      rows.push(['Income', e.name || 'Earner', m.toFixed(2), (m * 12).toFixed(2), e.frequency])
+    }
+
+    rows.push([])
+    rows.push(['--- Summary ---', '', '', '', ''])
+    rows.push(['', 'Monthly Gross', monthlyGross.toFixed(2), '', ''])
+    rows.push(['', 'Monthly Tax', taxes.monthlyTax.toFixed(2), '', ''])
+    rows.push(['', 'Monthly Take-Home', taxes.monthlyTakeHome.toFixed(2), '', ''])
+    rows.push(['', 'Monthly Expenses', monthlyExpenses.toFixed(2), '', ''])
+    rows.push(['', 'Monthly Remaining', (taxes.monthlyTakeHome - monthlyExpenses).toFixed(2), '', ''])
+    rows.push(['', 'Effective Tax Rate', taxes.effectiveRate.toFixed(2) + '%', '', ''])
+
+    const csv = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `family-budget-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="min-h-screen" style={{ background: '#0f1117' }}>
+      <Header
+        lastSaved={lastSaved}
+        onExport={handleExport}
+        selectedState={data.selectedState}
+        filingStatus={data.filingStatus}
+        remaining={taxes.monthlyTakeHome - monthlyExpenses}
+      />
+
+      <main className="max-w-screen-xl mx-auto px-4 py-5">
+        {/* Save indicator toast */}
+        <div
+          className="fixed bottom-5 right-5 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-xl"
+          style={{ background: '#1a1d27', border: '1px solid #2a2d3a', color: '#e8e8e8', fontFamily: 'ui-monospace, SFMono-Regular, monospace', fontSize: 11, letterSpacing: '0.04em' }}
+          style={{
+            opacity: saveIndicator ? 1 : 0,
+            transform: saveIndicator ? 'translateY(0)' : 'translateY(8px)',
+            transition: 'opacity 0.25s ease, transform 0.25s ease',
+            pointerEvents: 'none',
+          }}
+        >
+          <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          All changes saved
+        </div>
+
+        <SummaryDashboard
+          monthlyGross={monthlyGross}
+          taxes={taxes}
+          monthlyExpenses={monthlyExpenses}
+          expenses={data.expenses}
+        />
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 16 }}>
+          <IncomeSection earners={data.earners} onChange={setEarners} />
+          <TaxCalculator
+            filingStatus={data.filingStatus}
+            selectedState={data.selectedState}
+            annualGross={annualGross}
+            onChange={setTaxField}
+          />
+        </div>
+
+        <ExpenseTracker expenses={data.expenses} onChange={setExpenses} />
+
+        <SavingsGoals goals={data.goals} onChange={setGoals} />
+      </main>
+    </div>
+  )
+}
